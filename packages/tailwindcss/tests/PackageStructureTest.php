@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-it('creates valid package scaffolding with composer.json, module.php, config, and resources', function (): void {
+it('creates valid package scaffolding with composer.json, module.php, config, and stubs', function (): void {
     $packageRoot = dirname(__DIR__);
 
     expect(file_exists($packageRoot . '/composer.json'))->toBeTrue()
         ->and(file_exists($packageRoot . '/module.php'))->toBeTrue()
         ->and(is_dir($packageRoot . '/config'))->toBeTrue()
         ->and(file_exists($packageRoot . '/config/tailwindcss.php'))->toBeTrue()
-        ->and(is_dir($packageRoot . '/resources/css'))
-        ->and(file_exists($packageRoot . '/resources/css/app.css'))->toBeTrue();
+        ->and(is_dir($packageRoot . '/stubs/resources/css'))
+        ->and(file_exists($packageRoot . '/stubs/resources/css/app.css'))->toBeTrue();
 });
 
 it('has a valid composer.json for marko/tailwindcss', function (): void {
