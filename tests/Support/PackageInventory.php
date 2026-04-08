@@ -27,7 +27,7 @@ function markoPackageDirectories(): array
 
 function markoExpectedPackageDirectoryCount(): int
 {
-    return 73;
+    return 74;
 }
 
 /**
