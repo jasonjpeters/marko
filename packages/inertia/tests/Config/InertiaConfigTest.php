@@ -2,39 +2,27 @@
 
 declare(strict_types=1);
 
-use Marko\Config\ConfigRepository;
-use Marko\Inertia\Config\InertiaConfig;
+use Marko\Inertia\InertiaConfig;
+use Marko\Testing\Fake\FakeConfigRepository;
 
-function inertiaConfigRepository(array $overrides = []): ConfigRepository
+function inertiaConfigRepository(array $overrides = []): FakeConfigRepository
 {
-    return new ConfigRepository([
-        'inertia' => array_replace_recursive([
-            'version' => 'test-version',
-            'root_view' => [
-                'id' => 'app',
-                'title' => 'Marko',
-            ],
-            'pages' => [
-                'ensure_pages_exist' => false,
-                'paths' => ['resources/js/Pages'],
-                'extensions' => ['js', 'ts', 'tsx'],
-            ],
-            'testing' => [
-                'ensure_pages_exist' => true,
-            ],
-            'history' => [
-                'encrypt' => false,
-            ],
-        ], $overrides),
-    ]);
+    return new FakeConfigRepository(array_replace_recursive([
+        'inertia.version' => 'test-version',
+        'inertia.root.id' => 'app',
+        'inertia.root.title' => 'Marko',
+        'inertia.page.ensure_pages_exist' => false,
+        'inertia.page.paths' => ['resources/js/Pages'],
+        'inertia.page.extensions' => ['js', 'ts', 'tsx'],
+        'inertia.testing.ensure_pages_exist' => true,
+        'inertia.history.encrypt' => false,
+    ], $overrides));
 }
 
 it('returns normalized page paths and extensions', function (): void {
     $config = new InertiaConfig(inertiaConfigRepository([
-        'pages' => [
-            'paths' => [' resources/js/Pages ', '/resources/js/admin/Pages/'],
-            'extensions' => ['.JS', ' tsx ', ''],
-        ],
+        'inertia.page.paths' => [' resources/js/Pages ', '/resources/js/admin/Pages/'],
+        'inertia.page.extensions' => ['.JS', ' tsx ', ''],
     ]));
 
     expect($config->pagePaths())->toBe([
@@ -46,14 +34,30 @@ it('returns normalized page paths and extensions', function (): void {
     ]);
 });
 
+it('supports the legacy config keys during the refactor', function (): void {
+    $config = new InertiaConfig(new FakeConfigRepository([
+        'inertia.version' => 'legacy-version',
+        'inertia.root_view.id' => 'legacy-root',
+        'inertia.root_view.title' => 'Legacy Marko',
+        'inertia.pages.ensure_pages_exist' => true,
+        'inertia.pages.paths' => ['resources/js/LegacyPages'],
+        'inertia.pages.extensions' => ['vue'],
+        'inertia.testing.ensure_pages_exist' => false,
+        'inertia.history.encrypt' => true,
+    ]));
+
+    expect($config->version())->toBe('legacy-version')
+        ->and($config->rootElementId())->toBe('legacy-root')
+        ->and($config->rootTitle())->toBe('Legacy Marko')
+        ->and($config->pagePaths())->toBe(['resources/js/LegacyPages'])
+        ->and($config->pageExtensions())->toBe(['vue'])
+        ->and($config->encryptHistory())->toBeTrue();
+});
+
 it('uses testing ensure pages setting while running tests', function (): void {
     $config = new InertiaConfig(inertiaConfigRepository([
-        'pages' => [
-            'ensure_pages_exist' => false,
-        ],
-        'testing' => [
-            'ensure_pages_exist' => true,
-        ],
+        'inertia.page.ensure_pages_exist' => false,
+        'inertia.testing.ensure_pages_exist' => true,
     ]));
 
     expect($config->shouldEnsurePagesExist())->toBeTrue();
@@ -61,14 +65,10 @@ it('uses testing ensure pages setting while running tests', function (): void {
 
 it('exposes root settings version and history encryption', function (): void {
     $config = new InertiaConfig(inertiaConfigRepository([
-        'version' => 'abc123',
-        'root_view' => [
-            'id' => 'frontend',
-            'title' => 'Admin',
-        ],
-        'history' => [
-            'encrypt' => true,
-        ],
+        'inertia.version' => 'abc123',
+        'inertia.root.id' => 'frontend',
+        'inertia.root.title' => 'Admin',
+        'inertia.history.encrypt' => true,
     ]));
 
     expect($config->version())->toBe('abc123')

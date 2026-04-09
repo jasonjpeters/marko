@@ -2,25 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Marko\Inertia;
+namespace Marko\Inertia\Rendering;
 
 use Marko\Core\Module\ModuleRepositoryInterface;
 use Marko\Core\Path\ProjectPaths;
-use Marko\Inertia\Config\InertiaConfig;
-use Marko\Inertia\Contracts\PageComponentLocatorInterface;
 use Marko\Inertia\Exceptions\ComponentNotFoundException;
+use Marko\Inertia\InertiaConfig;
+use Marko\Inertia\Interfaces\ComponentResolverInterface;
 
-readonly class ModulePageComponentLocator implements PageComponentLocatorInterface
+readonly class ModuleComponentResolver implements ComponentResolverInterface
 {
     public function __construct(
-        private ModuleRepositoryInterface $modules,
-        private ProjectPaths $paths,
-        private InertiaConfig $config,
+        private ModuleRepositoryInterface $moduleRepository,
+        private ProjectPaths $projectPaths,
+        private InertiaConfig $inertiaConfig,
     ) {}
 
-    public function resolve(
-        string $component,
-    ): string {
+    public function resolve(string $component): string
+    {
         $searchedPaths = $this->getSearchedPaths($component);
 
         foreach ($searchedPaths as $path) {
@@ -32,9 +31,8 @@ readonly class ModulePageComponentLocator implements PageComponentLocatorInterfa
         throw ComponentNotFoundException::forComponent($component, $searchedPaths);
     }
 
-    public function exists(
-        string $component,
-    ): bool {
+    public function exists(string $component): bool
+    {
         foreach ($this->getSearchedPaths($component) as $path) {
             if (is_file($path)) {
                 return true;
@@ -44,21 +42,22 @@ readonly class ModulePageComponentLocator implements PageComponentLocatorInterfa
         return false;
     }
 
-    public function getSearchedPaths(
-        string $component,
-    ): array {
+    /**
+     * @return array<string>
+     */
+    public function getSearchedPaths(string $component): array
+    {
         [$moduleName, $componentPath] = $this->parseComponent($component);
-
-        $roots = $moduleName === ''
+        $searchRoots = $moduleName === ''
             ? $this->allSearchRoots()
             : $this->moduleSearchRoots($moduleName);
 
         $paths = [];
 
-        foreach ($roots as $root) {
-            foreach ($this->config->pagePaths() as $pagePath) {
-                foreach ($this->config->pageExtensions() as $extension) {
-                    $paths[] = $root . '/' . $pagePath . '/' . $componentPath . '.' . $extension;
+        foreach ($searchRoots as $searchRoot) {
+            foreach ($this->inertiaConfig->pagePaths() as $pagePath) {
+                foreach ($this->inertiaConfig->pageExtensions() as $extension) {
+                    $paths[] = $this->buildComponentPath($searchRoot, $pagePath, $componentPath, $extension);
                 }
             }
         }
@@ -67,17 +66,28 @@ readonly class ModulePageComponentLocator implements PageComponentLocatorInterfa
     }
 
     /**
-     * @return array{0: string, 1: string}
+     * Parse component name into module name and path.
+     *
+     * @return array{0: string, 1: string} [moduleName, componentPath]
      */
     private function parseComponent(
         string $component,
     ): array {
-        $normalized = trim(str_replace('\\', '/', $component), '/');
+        $normalized = trim(
+            str_replace('\\', '/', $component),
+            '/',
+        );
 
         if (str_contains($normalized, '::')) {
-            [$moduleName, $componentPath] = explode('::', $normalized, 2);
+            [
+                $moduleName,
+                $componentPath
+            ] = explode('::', $normalized, 2);
 
-            return [$moduleName, trim($componentPath, '/')];
+            return [
+                $moduleName,
+                trim($componentPath, '/'),
+            ];
         }
 
         return ['', $normalized];
@@ -88,9 +98,9 @@ readonly class ModulePageComponentLocator implements PageComponentLocatorInterfa
      */
     private function allSearchRoots(): array
     {
-        $roots = [$this->paths->base];
+        $roots = [$this->projectPaths->base];
 
-        foreach ($this->modules->all() as $module) {
+        foreach ($this->moduleRepository->all() as $module) {
             $roots[] = $module->path;
         }
 
@@ -105,14 +115,14 @@ readonly class ModulePageComponentLocator implements PageComponentLocatorInterfa
     ): array {
         $roots = [];
 
-        foreach ($this->modules->all() as $module) {
+        foreach ($this->moduleRepository->all() as $module) {
             if ($this->matchesModuleName($module->name, $moduleName)) {
                 $roots[] = $module->path;
             }
         }
 
         if (in_array($moduleName, ['app', 'root'], true)) {
-            array_unshift($roots, $this->paths->base);
+            array_unshift($roots, $this->projectPaths->base);
         }
 
         return array_values(array_unique($roots));
@@ -129,5 +139,20 @@ readonly class ModulePageComponentLocator implements PageComponentLocatorInterfa
         $parts = explode('/', $fullName);
 
         return end($parts) === $shortName;
+    }
+
+    private function buildComponentPath(
+        string $searchRoot,
+        string $pagePath,
+        string $componentPath,
+        string $extension,
+    ): string {
+        return rtrim($searchRoot, '/')
+            . '/'
+            . trim($pagePath, '/')
+            . '/'
+            . ltrim($componentPath, '/')
+            . '.'
+            . ltrim($extension, '.');
     }
 }

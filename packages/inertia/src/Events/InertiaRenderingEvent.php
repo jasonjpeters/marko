@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Marko\Inertia\Events;
 
 use Marko\Core\Event\Event;
+use Marko\Inertia\Props\PropArray;
 use Marko\Routing\Http\Request;
 
-class InertiaRendering extends Event
+class InertiaRenderingEvent extends Event
 {
     /**
-     * @param array<string, mixed> $props
-     * @param array<string, mixed> $sharedProps
+     * @param  array<string, mixed>  $props
+     * @param  array<string, mixed>  $sharedProps
      */
     public function __construct(
         public readonly Request $request,
@@ -25,11 +26,17 @@ class InertiaRendering extends Event
         mixed $value = null,
     ): void {
         if (is_array($key)) {
-            $this->sharedProps = array_replace($this->sharedProps, $key);
+            foreach ($key as $propKey => $propValue) {
+                if (! is_string($propKey)) {
+                    continue;
+                }
+
+                PropArray::set($this->sharedProps, $propKey, $propValue);
+            }
 
             return;
         }
 
-        $this->sharedProps[$key] = $value;
+        PropArray::set($this->sharedProps, $key, $value);
     }
 }

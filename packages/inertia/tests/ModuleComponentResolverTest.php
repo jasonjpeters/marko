@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-use Marko\Config\ConfigRepository;
 use Marko\Core\Module\ModuleManifest;
 use Marko\Core\Module\ModuleRepository;
 use Marko\Core\Path\ProjectPaths;
-use Marko\Inertia\Config\InertiaConfig;
 use Marko\Inertia\Exceptions\ComponentNotFoundException;
-use Marko\Inertia\ModulePageComponentLocator;
+use Marko\Inertia\InertiaConfig;
+use Marko\Inertia\Rendering\ModuleComponentResolver;
+use Marko\Testing\Fake\FakeConfigRepository;
 
-function makeInertiaLocator(string $basePath): ModulePageComponentLocator
+function makeInertiaResolver(string $basePath): ModuleComponentResolver
 {
     $modules = new ModuleRepository([
         new ModuleManifest(
@@ -27,28 +27,18 @@ function makeInertiaLocator(string $basePath): ModulePageComponentLocator
         ),
     ]);
 
-    $config = new InertiaConfig(new ConfigRepository([
-        'inertia' => [
-            'version' => null,
-            'root_view' => [
-                'id' => 'app',
-                'title' => 'Marko',
-            ],
-            'pages' => [
-                'ensure_pages_exist' => false,
-                'paths' => ['resources/js/Pages'],
-                'extensions' => ['tsx', 'vue'],
-            ],
-            'testing' => [
-                'ensure_pages_exist' => false,
-            ],
-            'history' => [
-                'encrypt' => false,
-            ],
-        ],
+    $config = new InertiaConfig(new FakeConfigRepository([
+        'inertia.version' => null,
+        'inertia.root.id' => 'app',
+        'inertia.root.title' => 'Marko',
+        'inertia.page.ensure_pages_exist' => false,
+        'inertia.page.paths' => ['resources/js/Pages'],
+        'inertia.page.extensions' => ['tsx', 'vue'],
+        'inertia.testing.ensure_pages_exist' => false,
+        'inertia.history.encrypt' => false,
     ]));
 
-    return new ModulePageComponentLocator($modules, new ProjectPaths($basePath), $config);
+    return new ModuleComponentResolver($modules, new ProjectPaths($basePath), $config);
 }
 
 it('resolves components from the project root before modules', function (): void {
@@ -59,10 +49,10 @@ it('resolves components from the project root before modules', function (): void
     file_put_contents($basePath . '/resources/js/Pages/Users/Index.tsx', 'root');
     file_put_contents($basePath . '/app/blog/resources/js/Pages/Users/Index.tsx', 'module');
 
-    $locator = makeInertiaLocator($basePath);
+    $resolver = makeInertiaResolver($basePath);
 
-    expect($locator->resolve('Users/Index'))->toBe($basePath . '/resources/js/Pages/Users/Index.tsx')
-        ->and($locator->exists('Users/Index'))->toBeTrue();
+    expect($resolver->resolve('Users/Index'))->toBe($basePath . '/resources/js/Pages/Users/Index.tsx')
+        ->and($resolver->exists('Users/Index'))->toBeTrue();
 });
 
 it('supports module-prefixed component names similar to view resolution', function (): void {
@@ -70,20 +60,33 @@ it('supports module-prefixed component names similar to view resolution', functi
     mkdir($basePath . '/vendor/marko/admin-panel/resources/js/Pages/Dashboard', 0755, true);
     file_put_contents($basePath . '/vendor/marko/admin-panel/resources/js/Pages/Dashboard/Index.vue', 'vendor');
 
-    $locator = makeInertiaLocator($basePath);
+    $resolver = makeInertiaResolver($basePath);
 
-    expect($locator->resolve('admin-panel::Dashboard/Index'))
+    expect($resolver->resolve('admin-panel::Dashboard/Index'))
         ->toBe($basePath . '/vendor/marko/admin-panel/resources/js/Pages/Dashboard/Index.vue');
+});
+
+it('treats app and root prefixes as the project base path', function (): void {
+    $basePath = sys_get_temp_dir() . '/marko-inertia-pages-' . uniqid();
+    mkdir($basePath . '/resources/js/Pages/Dashboard', 0755, true);
+    file_put_contents($basePath . '/resources/js/Pages/Dashboard/Index.tsx', 'root');
+
+    $resolver = makeInertiaResolver($basePath);
+
+    expect($resolver->resolve('app::Dashboard/Index'))
+        ->toBe($basePath . '/resources/js/Pages/Dashboard/Index.tsx')
+        ->and($resolver->resolve('root::Dashboard/Index'))
+        ->toBe($basePath . '/resources/js/Pages/Dashboard/Index.tsx');
 });
 
 it('throws a helpful exception when a component cannot be found', function (): void {
     $basePath = sys_get_temp_dir() . '/marko-inertia-pages-' . uniqid();
     mkdir($basePath, 0755, true);
 
-    $locator = makeInertiaLocator($basePath);
+    $resolver = makeInertiaResolver($basePath);
 
     try {
-        $locator->resolve('Missing/Page');
+        $resolver->resolve('Missing/Page');
         $this->fail('Expected ComponentNotFoundException was not thrown');
     } catch (ComponentNotFoundException $e) {
         expect($e->getMessage())->toContain("Inertia component 'Missing/Page' not found.")

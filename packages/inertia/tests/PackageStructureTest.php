@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-use Marko\Inertia\Contracts\InertiaInterface;
-use Marko\Inertia\Contracts\PageComponentLocatorInterface;
+use Marko\Inertia\Interfaces\ComponentResolverInterface;
+use Marko\Inertia\Interfaces\InertiaInterface;
+use Marko\Inertia\Props\PropsResolver;
+use Marko\Inertia\Response\ResponseFactory;
 
 it('creates valid package scaffolding with composer.json, module.php, src, tests, and config', function (): void {
     $packageRoot = dirname(__DIR__);
@@ -26,6 +28,7 @@ it('has a valid composer.json for marko/inertia', function (): void {
         ->and($composer['require']['marko/config'])->toBe('self.version')
         ->and($composer['require']['marko/core'])->toBe('self.version')
         ->and($composer['require']['marko/routing'])->toBe('self.version')
+        ->and($composer['require']['marko/session'])->toBe('self.version')
         ->and($composer['require']['marko/vite'])->toBe('self.version')
         ->and($composer['autoload']['psr-4']['Marko\\Inertia\\'])->toBe('src/')
         ->and($composer['autoload-dev']['psr-4']['Marko\\Inertia\\Tests\\'])->toBe('tests/');
@@ -37,5 +40,7 @@ it('has module.php with bindings for the inertia services', function (): void {
     expect($module)->toBeArray()
         ->and($module)->toHaveKey('bindings')
         ->and($module['bindings'])->toHaveKey(InertiaInterface::class)
-        ->and($module['bindings'])->toHaveKey(PageComponentLocatorInterface::class);
+        ->and($module['bindings'])->toHaveKey(ComponentResolverInterface::class)
+        ->and($module['singletons'])->toContain(PropsResolver::class)
+        ->and($module['singletons'])->toContain(ResponseFactory::class);
 });
