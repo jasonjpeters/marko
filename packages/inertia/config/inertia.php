@@ -20,7 +20,7 @@ return [
 
     'page' => [
         'paths' => [
-            'resources/js/Pages',
+            'resources/js/pages',
         ],
         'extensions' => [
             'js',

@@ -13,7 +13,7 @@ function inertiaConfigRepository(array $overrides = []): FakeConfigRepository
         'inertia.root.id' => 'app',
         'inertia.root.title' => 'Marko',
         'inertia.page.ensure_pages_exist' => false,
-        'inertia.page.paths' => ['resources/js/Pages'],
+        'inertia.page.paths' => ['resources/js/pages'],
         'inertia.page.extensions' => ['js', 'ts', 'tsx'],
         'inertia.testing.ensure_pages_exist' => true,
         'inertia.history.encrypt' => false,
@@ -22,13 +22,13 @@ function inertiaConfigRepository(array $overrides = []): FakeConfigRepository
 
 it('returns normalized page paths and extensions', function (): void {
     $config = new InertiaConfig(inertiaConfigRepository([
-        'inertia.page.paths' => [' resources/js/Pages ', '/resources/js/admin/Pages/'],
+        'inertia.page.paths' => [' resources/js/pages ', '/resources/js/admin/pages/'],
         'inertia.page.extensions' => ['.JS', ' tsx ', ''],
     ]));
 
     expect($config->pagePaths())->toBe([
-        'resources/js/Pages',
-        'resources/js/admin/Pages',
+        'resources/js/pages',
+        'resources/js/admin/pages',
     ])->and($config->pageExtensions())->toBe([
         'js',
         'tsx',

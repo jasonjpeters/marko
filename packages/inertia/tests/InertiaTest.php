@@ -31,7 +31,7 @@ function fakeInertiaConfig(array $overrides = []): InertiaConfig
             ],
             'page' => [
                 'ensure_pages_exist' => false,
-                'paths' => ['resources/js/Pages'],
+                'paths' => ['resources/js/pages'],
                 'extensions' => ['tsx'],
             ],
             'testing' => [

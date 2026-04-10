@@ -154,6 +154,18 @@
         },
         {
             "type": "path",
+            "url": "packages/inertia-vue"
+        },
+        {
+            "type": "path",
+            "url": "packages/inertia-react"
+        },
+        {
+            "type": "path",
+            "url": "packages/inertia-svelte"
+        },
+        {
+            "type": "path",
             "url": "packages/log"
         },
         {
