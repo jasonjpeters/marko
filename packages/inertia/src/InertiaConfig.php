@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Marko\Inertia;
 
 use Marko\Config\ConfigRepositoryInterface;
-use Pest\TestSuite;
 
 readonly class InertiaConfig
 {
@@ -78,11 +77,7 @@ readonly class InertiaConfig
 
     public function shouldEnsurePagesExist(): bool
     {
-        $isTesting = class_exists(TestSuite::class)
-            || defined('PHPUNIT_COMPOSER_INSTALL')
-            || in_array($_ENV['APP_ENV'] ?? '', ['test', 'testing'], true);
-
-        if ($isTesting && $this->config->has('inertia.testing.ensure_pages_exist')) {
+        if ($this->isTestingEnvironment() && $this->config->has('inertia.testing.ensure_pages_exist')) {
             return $this->config->getBool('inertia.testing.ensure_pages_exist');
         }
 
@@ -143,5 +138,14 @@ readonly class InertiaConfig
         }
 
         return $keys[0];
+    }
+
+    private function isTestingEnvironment(): bool
+    {
+        if (! $this->config->has('app.env')) {
+            return false;
+        }
+
+        return in_array($this->config->getString('app.env'), ['test', 'testing'], true);
     }
 }

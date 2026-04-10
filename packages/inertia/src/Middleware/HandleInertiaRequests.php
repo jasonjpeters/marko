@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Marko\Inertia\Middleware;
 
+use Marko\Core\Container\ContainerInterface;
+use Marko\Inertia\Inertia;
 use Marko\Inertia\Enums\InertiaHeaderEnum;
 use Marko\Inertia\Interfaces\InertiaInterface;
 use Marko\Inertia\Props\OnceProp;
@@ -15,12 +17,20 @@ class HandleInertiaRequests implements MiddlewareInterface
 {
     public function __construct(
         private readonly InertiaInterface $inertia,
+        private readonly ContainerInterface $container,
     ) {}
 
     public function handle(
         Request $request,
         callable $next,
     ): Response {
+        // Ensure downstream controller resolution sees this request's Inertia instance.
+        if ($this->inertia instanceof Inertia) {
+            $this->container->instance(Inertia::class, $this->inertia);
+        }
+
+        $this->container->instance(InertiaInterface::class, $this->inertia);
+
         $this->inertia->flushShared();
         $this->inertia->share($this->share($request));
 

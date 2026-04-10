@@ -46,10 +46,8 @@ return [
     ],
     'singletons' => [
         InertiaConfig::class,
-        Inertia::class,
         ModuleComponentResolver::class,
         PropsResolver::class,
-        ResponseFactory::class,
         RootRenderer::class,
         SsrGateway::class,
     ],

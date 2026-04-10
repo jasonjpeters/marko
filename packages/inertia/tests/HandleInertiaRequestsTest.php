@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use Marko\Config\ConfigRepository;
+use Marko\Core\Container\Container;
+use Marko\Core\Container\ContainerInterface;
 use Marko\Core\Event\Event;
 use Marko\Core\Event\EventDispatcherInterface;
 use Marko\Inertia\Inertia;
 use Marko\Inertia\InertiaConfig;
 use Marko\Inertia\Interfaces\ComponentResolverInterface;
+use Marko\Inertia\Interfaces\InertiaInterface;
 use Marko\Inertia\Interfaces\RootRendererInterface;
 use Marko\Inertia\Middleware\HandleInertiaRequests;
 use Marko\Inertia\Props\PropsResolver;
@@ -78,13 +81,14 @@ function makeMiddlewareAwareInertia(): Inertia
 
 it('flushes shared props at the beginning of each request and adds the vary header', function (): void {
     $inertia = makeMiddlewareAwareInertia();
+    $container = new Container();
     $inertia->share('stale', 'value');
 
-    $middleware = new class ($inertia) extends HandleInertiaRequests
+    $middleware = new class ($inertia, $container) extends HandleInertiaRequests
     {
-        public function __construct(Inertia $inertia)
+        public function __construct(Inertia $inertia, ContainerInterface $container)
         {
-            parent::__construct($inertia);
+            parent::__construct($inertia, $container);
         }
 
         protected function share(Request $request): array
@@ -113,12 +117,13 @@ it('flushes shared props at the beginning of each request and adds the vary head
 
 it('shares once props', function (): void {
     $inertia = makeMiddlewareAwareInertia();
+    $container = new Container();
 
-    $middleware = new class ($inertia) extends HandleInertiaRequests
+    $middleware = new class ($inertia, $container) extends HandleInertiaRequests
     {
-        public function __construct(Inertia $inertia)
+        public function __construct(Inertia $inertia, ContainerInterface $container)
         {
-            parent::__construct($inertia);
+            parent::__construct($inertia, $container);
         }
 
         protected function shareOnce(Request $request): array
@@ -150,7 +155,7 @@ it('shares once props', function (): void {
 it('changes 302 redirects to 303 for PUT, PATCH, and DELETE requests', function (string $method): void {
     $inertia = makeMiddlewareAwareInertia();
 
-    $middleware = new HandleInertiaRequests($inertia);
+    $middleware = new HandleInertiaRequests($inertia, new Container());
 
     $response = $middleware->handle(new Request(
         server: [
@@ -169,7 +174,7 @@ it('changes 302 redirects to 303 for PUT, PATCH, and DELETE requests', function 
 it('does not change 302 redirects to 303 for GET requests', function (): void {
     $inertia = makeMiddlewareAwareInertia();
 
-    $middleware = new HandleInertiaRequests($inertia);
+    $middleware = new HandleInertiaRequests($inertia, new Container());
 
     $response = $middleware->handle(new Request(
         server: [
@@ -187,7 +192,7 @@ it('does not change 302 redirects to 303 for GET requests', function (): void {
 it('returns a 409 conflict response for redirects with fragments', function (): void {
     $inertia = makeMiddlewareAwareInertia();
 
-    $middleware = new HandleInertiaRequests($inertia);
+    $middleware = new HandleInertiaRequests($inertia, new Container());
 
     $response = $middleware->handle(new Request(
         server: [
@@ -201,4 +206,19 @@ it('returns a 409 conflict response for redirects with fragments', function (): 
 
     expect($response->statusCode())->toBe(409)
         ->and($response->headers()['X-Inertia-Location'])->toBe('/home#section');
+});
+
+it('registers the current request inertia instance for downstream resolution', function (): void {
+    $inertia = makeMiddlewareAwareInertia();
+    $container = new Container();
+    $middleware = new HandleInertiaRequests($inertia, $container);
+
+    $middleware->handle(new Request(
+        server: ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/dashboard'],
+    ), function (Request $request) use ($container, $inertia): Response {
+        expect($container->get(InertiaInterface::class))->toBe($inertia)
+            ->and($container->get(Inertia::class))->toBe($inertia);
+
+        return Response::html('ok');
+    });
 });

@@ -42,5 +42,6 @@ it('has module.php with bindings for the inertia services', function (): void {
         ->and($module['bindings'])->toHaveKey(InertiaInterface::class)
         ->and($module['bindings'])->toHaveKey(ComponentResolverInterface::class)
         ->and($module['singletons'])->toContain(PropsResolver::class)
-        ->and($module['singletons'])->toContain(ResponseFactory::class);
+        ->and($module['singletons'])->not->toContain(ResponseFactory::class)
+        ->and($module['singletons'])->not->toContain(\Marko\Inertia\Inertia::class);
 });

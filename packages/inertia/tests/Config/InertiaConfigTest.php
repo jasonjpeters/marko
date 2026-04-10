@@ -8,6 +8,7 @@ use Marko\Testing\Fake\FakeConfigRepository;
 function inertiaConfigRepository(array $overrides = []): FakeConfigRepository
 {
     return new FakeConfigRepository(array_replace_recursive([
+        'app.env' => 'testing',
         'inertia.version' => 'test-version',
         'inertia.root.id' => 'app',
         'inertia.root.title' => 'Marko',
