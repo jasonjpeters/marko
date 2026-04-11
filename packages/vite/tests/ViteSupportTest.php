@@ -75,6 +75,16 @@ test('project file publisher reports create skip and replace states', function (
         ->and((string) file_get_contents($this->tempDirectory . '/resources/js/app.ts'))->toBe('third');
 })->group('vite');
 
+test('project file publisher reports failed writes instead of pretending success', function (): void {
+    file_put_contents($this->tempDirectory . '/resources', 'blocking file');
+
+    $publisher = new ProjectFilePublisher(new ProjectPaths($this->tempDirectory));
+    $result = $publisher->publish('resources/js/app.ts', 'blocked');
+
+    expect($result->status)->toBe('failed')
+        ->and($result->message)->toContain('Could not create directory');
+})->group('vite');
+
 test('manifest repository dispatches an event and ignores malformed entries', function (): void {
     mkdir($this->tempDirectory . '/public/build', 0777, true);
     file_put_contents($this->tempDirectory . '/public/build/manifest.json', json_encode([

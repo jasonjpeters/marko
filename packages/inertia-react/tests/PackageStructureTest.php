@@ -47,3 +47,11 @@ it('has module.php with bindings for the inertia react services', function (): v
         ->and($module['singletons'])->toContain(InertiaReactPublisher::class)
         ->and($module['singletons'])->toContain(InertiaReactViteConfigUpdater::class);
 });
+
+it('publishes a bootstrap helper with inertia config passthrough support', function (): void {
+    $bootstrap = (string) file_get_contents(dirname(__DIR__) . '/resources/js/bootstrap.ts');
+
+    expect($bootstrap)->toContain('inertia?:')
+        ->and($bootstrap)->toContain('typeof options.inertia === "function"')
+        ->and($bootstrap)->toContain('return createInertiaApp(inertiaConfig as never);');
+});

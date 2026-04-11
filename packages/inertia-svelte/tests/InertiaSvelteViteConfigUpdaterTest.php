@@ -7,6 +7,7 @@ require __DIR__ . '/bootstrap.php';
 use Marko\Core\Path\ProjectPaths;
 use Marko\Inertia\Svelte\InertiaSvelteViteConfigUpdater;
 use Marko\Vite\ProjectFilePublisher;
+use Marko\Vite\ScaffoldTemplateRenderer;
 use Marko\Vite\ValueObjects\ViteConfig;
 
 beforeEach(function (): void {
@@ -38,20 +39,23 @@ afterEach(function (): void {
 
 function makeInertiaSvelteViteConfigUpdater(string $directory): InertiaSvelteViteConfigUpdater
 {
+    $viteConfig = new ViteConfig(
+        devServerUrl: 'http://localhost:5173',
+        devProcessFilePath: $directory . '/.marko/dev.json',
+        hotFilePath: $directory . '/public/hot',
+        manifestPath: $directory . '/public/build/manifest.json',
+        buildDirectory: '/build',
+        assetsBaseUrl: '',
+        defaultEntrypoints: [],
+        rootEntrypointPath: 'resources/js/app.ts',
+        rootViteConfigPath: 'vite.config.ts',
+    );
+
     return new InertiaSvelteViteConfigUpdater(
-        new ViteConfig(
-            devServerUrl: 'http://localhost:5173',
-            devProcessFilePath: $directory . '/.marko/dev.json',
-            hotFilePath: $directory . '/public/hot',
-            manifestPath: $directory . '/public/build/manifest.json',
-            buildDirectory: '/build',
-            assetsBaseUrl: '',
-            defaultEntrypoints: [],
-            rootEntrypointPath: 'resources/js/app.ts',
-            rootViteConfigPath: 'vite.config.ts',
-        ),
+        $viteConfig,
         new ProjectPaths($directory),
         new ProjectFilePublisher(new ProjectPaths($directory)),
+        new ScaffoldTemplateRenderer($viteConfig),
     );
 }
 
@@ -104,4 +108,25 @@ test('inertia svelte vite config updater preserves tailwind support when upgradi
         ->toContain("import tailwindcss from '@tailwindcss/vite';")
         ->toContain('plugins: [svelte(), tailwindcss()]')
         ->toContain("entrypoints: ['resources/js/app.ts', 'resources/css/app.css']");
+})->group('inertia-svelte');
+
+test('inertia svelte vite config updater preserves custom tailwind entrypoints', function (): void {
+    file_put_contents(
+        $this->tempDirectory . '/vite.config.ts',
+        "import { defineConfig } from 'vite';\n"
+        . "import tailwindcss from '@tailwindcss/vite';\n"
+        . "import { createBaseConfig } from './vendor/marko/vite/resources/config/createViteConfig';\n\n"
+        . "export default defineConfig(\n"
+        . "  createBaseConfig({\n"
+        . "    plugins: [tailwindcss()],\n"
+        . "    entrypoints: ['resources/js/app.ts', 'frontend/styles/site.css'],\n"
+        . "  }),\n"
+        . ");\n",
+    );
+
+    $result = makeInertiaSvelteViteConfigUpdater($this->tempDirectory)->ensureSvelteConfig();
+
+    expect($result->status)->toBe('replaced');
+    expect((string) file_get_contents($this->tempDirectory . '/vite.config.ts'))
+        ->toContain("entrypoints: ['resources/js/app.ts', 'frontend/styles/site.css']");
 })->group('inertia-svelte');

@@ -12,17 +12,32 @@ type SetupContext = {
   props: Record<string, unknown>;
 };
 
+type MarkoInertiaSvelteConfig = {
+  id: string;
+  resolve: ReturnType<typeof createMarkoPageResolver>;
+  title: ReturnType<typeof createMarkoTitleResolver>;
+  setup: (context: {
+    el: HTMLElement;
+    App: unknown;
+    props: Record<string, unknown>;
+  }) => void;
+  [key: string]: unknown;
+};
+
 export type MarkoInertiaSvelteOptions = {
   pages: MarkoInertiaPages;
   id?: string;
   title?: (title: string, appName: string) => string;
   setup?: (context: SetupContext) => void;
+  inertia?:
+    | Partial<MarkoInertiaSvelteConfig>
+    | ((config: MarkoInertiaSvelteConfig) => MarkoInertiaSvelteConfig);
 };
 
 export function bootstrapMarkoInertiaSvelte(
   options: MarkoInertiaSvelteOptions,
 ): Promise<unknown> {
-  return createInertiaApp({
+  const config: MarkoInertiaSvelteConfig = {
     id: options.id ?? "app",
     resolve: createMarkoPageResolver(options.pages),
     title: createMarkoTitleResolver(options.title),
@@ -42,5 +57,15 @@ export function bootstrapMarkoInertiaSvelte(
         props,
       });
     },
-  });
+  };
+
+  const inertiaConfig =
+    typeof options.inertia === "function"
+      ? options.inertia(config)
+      : {
+          ...config,
+          ...options.inertia,
+        };
+
+  return createInertiaApp(inertiaConfig as never);
 }

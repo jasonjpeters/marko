@@ -13,11 +13,11 @@ composer require marko/tailwindcss
 ## Initialize Project Files
 
 ```bash
-marko tailwind:init
+marko vite:init --tailwind
 npm install
 ```
 
-The init command prepares the minimum Tailwind + Vite setup:
+This is the primary Tailwind scaffold workflow and prepares the minimum Tailwind + Vite setup:
 
 - creates or updates `package.json`
 - publishes or updates `vite.config.ts`
@@ -28,13 +28,13 @@ The init command prepares the minimum Tailwind + Vite setup:
 You can preview changes first with:
 
 ```bash
-marko tailwind:init --dry-run
+marko vite:init --tailwind --dry-run
 ```
 
 Replace generated files with:
 
 ```bash
-marko tailwind:init --force
+marko vite:init --tailwind --force
 ```
 
 ## Configuration

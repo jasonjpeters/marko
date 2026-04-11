@@ -20,6 +20,7 @@ use Marko\Vite\EntrypointResolver;
 use Marko\Vite\ManifestRepository;
 use Marko\Vite\PackageJsonUpdater;
 use Marko\Vite\ProjectFilePublisher;
+use Marko\Vite\ScaffoldTemplateRenderer;
 use Marko\Vite\TagRenderer;
 use Marko\Vite\ValueObjects\ViteConfig;
 use Marko\Vite\ViteManager;
@@ -55,6 +56,7 @@ return [
         VitePublisher::class,
         PackageJsonUpdater::class,
         ProjectFilePublisher::class,
+        ScaffoldTemplateRenderer::class,
         ViteViewHelper::class,
     ],
 ];

@@ -15,18 +15,33 @@ type SetupContext = {
   app: ReactElement;
 };
 
+type MarkoInertiaReactConfig = {
+  id: string;
+  resolve: ReturnType<typeof createMarkoPageResolver>;
+  title: ReturnType<typeof createMarkoTitleResolver>;
+  setup: (context: {
+    el: HTMLElement;
+    App: unknown;
+    props: Record<string, unknown>;
+  }) => void;
+  [key: string]: unknown;
+};
+
 export type MarkoInertiaReactOptions = {
   pages: MarkoInertiaPages;
   id?: string;
   title?: (title: string, appName: string) => string;
   strictMode?: boolean;
   setup?: (context: SetupContext) => void;
+  inertia?:
+    | Partial<MarkoInertiaReactConfig>
+    | ((config: MarkoInertiaReactConfig) => MarkoInertiaReactConfig);
 };
 
 export function bootstrapMarkoInertiaReact(
   options: MarkoInertiaReactOptions,
 ): Promise<unknown> {
-  return createInertiaApp({
+  const config: MarkoInertiaReactConfig = {
     id: options.id ?? "app",
     resolve: createMarkoPageResolver(options.pages),
     title: createMarkoTitleResolver(options.title),
@@ -52,5 +67,15 @@ export function bootstrapMarkoInertiaReact(
           : createElement(StrictMode, null, app),
       );
     },
-  });
+  };
+
+  const inertiaConfig =
+    typeof options.inertia === "function"
+      ? options.inertia(config)
+      : {
+          ...config,
+          ...options.inertia,
+        };
+
+  return createInertiaApp(inertiaConfig as never);
 }

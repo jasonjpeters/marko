@@ -13,6 +13,7 @@ class VitePublisher implements VitePublisherInterface
     public function __construct(
         private readonly ViteConfig $config,
         private readonly ProjectFilePublisher $publisher,
+        private readonly ScaffoldTemplateRenderer $renderer,
     ) {}
 
     public function publishConfig(
@@ -22,7 +23,7 @@ class VitePublisher implements VitePublisherInterface
     {
         return $this->publisher->publish(
             $this->config->rootViteConfigPath,
-            (string) file_get_contents(dirname(__DIR__) . '/stubs/vite.config.ts'),
+            $this->renderer->renderViteConfig(),
             $force,
             $dryRun,
         );
@@ -35,7 +36,7 @@ class VitePublisher implements VitePublisherInterface
     {
         return $this->publisher->publish(
             $this->config->rootEntrypointPath,
-            (string) file_get_contents(dirname(__DIR__) . '/stubs/resources/js/app.ts'),
+            $this->renderer->renderViteEntrypoint(),
             $force,
             $dryRun,
         );

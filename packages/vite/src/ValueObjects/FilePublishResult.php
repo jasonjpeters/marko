@@ -9,5 +9,6 @@ readonly class FilePublishResult
     public function __construct(
         public string $path,
         public string $status,
+        public ?string $message = null,
     ) {}
 }

@@ -14,17 +14,33 @@ type SetupContext = {
   plugin: unknown;
 };
 
+type MarkoInertiaVueConfig = {
+  id: string;
+  resolve: ReturnType<typeof createMarkoPageResolver>;
+  title: ReturnType<typeof createMarkoTitleResolver>;
+  setup: (context: {
+    el: Element;
+    App: unknown;
+    props: Record<string, unknown>;
+    plugin: unknown;
+  }) => void;
+  [key: string]: unknown;
+};
+
 export type MarkoInertiaVueOptions = {
   pages: MarkoInertiaPages;
   id?: string;
   title?: (title: string, appName: string) => string;
   setup?: (context: SetupContext) => void;
+  inertia?:
+    | Partial<MarkoInertiaVueConfig>
+    | ((config: MarkoInertiaVueConfig) => MarkoInertiaVueConfig);
 };
 
 export function bootstrapMarkoInertiaVue(
   options: MarkoInertiaVueOptions,
 ): Promise<unknown> {
-  return createInertiaApp({
+  const config: MarkoInertiaVueConfig = {
     id: options.id ?? "app",
     resolve: createMarkoPageResolver(options.pages),
     title: createMarkoTitleResolver(options.title),
@@ -49,5 +65,15 @@ export function bootstrapMarkoInertiaVue(
 
       app.mount(el);
     },
-  });
+  };
+
+  const inertiaConfig =
+    typeof options.inertia === "function"
+      ? options.inertia(config)
+      : {
+          ...config,
+          ...options.inertia,
+        };
+
+  return createInertiaApp(inertiaConfig as never);
 }

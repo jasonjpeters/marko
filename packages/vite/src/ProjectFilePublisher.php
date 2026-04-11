@@ -31,12 +31,46 @@ class ProjectFilePublisher
         }
 
         $directory = dirname($absolutePath);
-        if (!is_dir($directory)) {
-            mkdir($directory, 0777, true);
+        if (! is_dir($directory) && ! $this->safeMkdir($directory) && ! is_dir($directory)) {
+            return new FilePublishResult(
+                $relativePath,
+                'failed',
+                sprintf('Could not create directory `%s`', $directory),
+            );
         }
 
-        file_put_contents($absolutePath, $contents);
+        if (! $this->safeWrite($absolutePath, $contents)) {
+            return new FilePublishResult(
+                $relativePath,
+                'failed',
+                sprintf('Could not write `%s`', $absolutePath),
+            );
+        }
 
         return new FilePublishResult($relativePath, $exists ? 'replaced' : 'created');
+    }
+
+    private function safeMkdir(string $directory): bool
+    {
+        set_error_handler(static fn (): bool => true);
+
+        try {
+            return mkdir($directory, 0777, true);
+        } finally {
+            restore_error_handler();
+        }
+    }
+
+    private function safeWrite(
+        string $path,
+        string $contents,
+    ): bool {
+        set_error_handler(static fn (): bool => true);
+
+        try {
+            return file_put_contents($path, $contents) !== false;
+        } finally {
+            restore_error_handler();
+        }
     }
 }

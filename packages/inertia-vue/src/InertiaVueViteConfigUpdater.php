@@ -4,18 +4,21 @@ declare(strict_types=1);
 
 namespace Marko\Inertia\Vue;
 
-use Marko\Core\Path\ProjectPaths;
-use Marko\Vite\ProjectFilePublisher;
+use Marko\Vite\ScaffoldViteConfigUpdater;
+use Marko\Vite\ScaffoldTemplateRenderer;
 use Marko\Vite\ValueObjects\FilePublishResult;
 use Marko\Vite\ValueObjects\ViteConfig;
 
-class InertiaVueViteConfigUpdater
+class InertiaVueViteConfigUpdater extends ScaffoldViteConfigUpdater
 {
     public function __construct(
-        private readonly ViteConfig $viteConfig,
-        private readonly ProjectPaths $paths,
-        private readonly ProjectFilePublisher $publisher,
-    ) {}
+        ViteConfig $viteConfig,
+        \Marko\Core\Path\ProjectPaths $paths,
+        \Marko\Vite\ProjectFilePublisher $publisher,
+        ScaffoldTemplateRenderer $renderer,
+    ) {
+        parent::__construct($viteConfig, $paths, $publisher, $renderer);
+    }
 
     public function ensureVueConfig(
         bool $force = false,
@@ -23,26 +26,23 @@ class InertiaVueViteConfigUpdater
     ): FilePublishResult {
         $relativePath = $this->viteConfig->rootViteConfigPath;
         $absolutePath = $this->paths->base . '/' . $relativePath;
+        $replacement = $this->vueStub();
 
-        if (! is_file($absolutePath)) {
-            return $this->publisher->publish($relativePath, $this->vueStub(), false, $dryRun);
+        if (is_file($absolutePath)) {
+            $contents = (string) file_get_contents($absolutePath);
+
+            $replacement = $this->containsTailwindPlugin($contents)
+                ? $this->tailwindVueStub($this->entrypointsForExistingConfig($contents))
+                : $this->vueStub();
         }
 
-        $contents = (string) file_get_contents($absolutePath);
-
-        if ($this->containsVuePlugin($contents) || $this->normalized($contents) === $this->normalized($this->vueStub())) {
-            return new FilePublishResult($relativePath, 'already_present');
-        }
-
-        $replacement = $this->containsTailwindPlugin($contents)
-            ? $this->tailwindVueStub()
-            : $this->vueStub();
-
-        if ($this->isReplaceableViteStub($contents) || $force) {
-            return $this->publisher->publish($relativePath, $replacement, true, $dryRun);
-        }
-
-        return new FilePublishResult($relativePath, 'skipped');
+        return $this->ensureConfig(
+            configWhenMissing: $this->vueStub(),
+            configWhenPresent: $replacement,
+            pluginNeedles: ['@vitejs/plugin-vue', 'plugins: [vue()]', 'plugins: [vue(), tailwindcss()]'],
+            force: $force,
+            dryRun: $dryRun,
+        );
     }
 
     private function containsVuePlugin(string $contents): bool
@@ -52,91 +52,47 @@ class InertiaVueViteConfigUpdater
             || str_contains($contents, 'plugins: [vue(), tailwindcss()]');
     }
 
-    private function containsTailwindPlugin(string $contents): bool
-    {
-        return str_contains($contents, '@tailwindcss/vite')
-            || str_contains($contents, "entrypoints: ['resources/js/app.ts', 'resources/css/app.css']")
-            || str_contains($contents, 'entrypoints: ["resources/js/app.ts", "resources/css/app.css"]');
-    }
-
-    private function normalized(string $contents): string
-    {
-        return trim(str_replace(["\r\n", "\r"], "\n", $contents));
-    }
-
-    private function isReplaceableViteStub(string $contents): bool
-    {
-        $normalized = $this->normalized($contents);
-
-        return $normalized === $this->normalized($this->viteStub())
-            || $normalized === $this->normalized($this->tailwindStub())
-            || $normalized === $this->normalized($this->legacyViteStub())
-            || $normalized === $this->normalized($this->vendorProxyViteStub())
-            || $normalized === $this->normalized($this->legacyTailwindProxyStub())
-            || $normalized === $this->normalized($this->vendorTailwindProxyStub());
-    }
-
-    private function viteStub(): string
-    {
-        return (string) file_get_contents(dirname(__DIR__, 2) . '/vite/stubs/vite.config.ts');
-    }
-
     private function tailwindStub(): string
     {
-        return str_replace(
-            "entrypoints: ['resources/js/app.ts'],",
-            "plugins: [tailwindcss()],\n    entrypoints: ['resources/js/app.ts', 'resources/css/app.css'],",
-            str_replace(
-                "import { createBaseConfig } from './vendor/marko/vite/resources/config/createViteConfig';",
-                "import tailwindcss from '@tailwindcss/vite';\nimport { createBaseConfig } from './vendor/marko/vite/resources/config/createViteConfig';",
-                $this->viteStub(),
-            ),
-        );
+        return $this->tailwindVueStub([
+            $this->viteConfig->rootEntrypointPath,
+            'resources/css/app.css',
+        ], framework: false);
     }
 
     private function vueStub(): string
     {
-        return str_replace(
-            "entrypoints: ['resources/js/app.ts'],",
-            "plugins: [vue()],\n    entrypoints: ['resources/js/app.ts'],",
-            str_replace(
-                "import { createBaseConfig } from './vendor/marko/vite/resources/config/createViteConfig';",
-                "import vue from '@vitejs/plugin-vue';\nimport { createBaseConfig } from './vendor/marko/vite/resources/config/createViteConfig';",
-                $this->viteStub(),
-            ),
+        return $this->renderer->renderViteConfig(
+            imports: ["import vue from '@vitejs/plugin-vue';"],
+            plugins: ['vue()'],
         );
     }
 
-    private function tailwindVueStub(): string
+    /**
+     * @param list<string>|null $entrypoints
+     */
+    private function tailwindVueStub(?array $entrypoints = null, bool $framework = true): string
     {
-        return str_replace(
-            "entrypoints: ['resources/js/app.ts'],",
-            "plugins: [vue(), tailwindcss()],\n    entrypoints: ['resources/js/app.ts', 'resources/css/app.css'],",
-            str_replace(
-                "import { createBaseConfig } from './vendor/marko/vite/resources/config/createViteConfig';",
-                "import vue from '@vitejs/plugin-vue';\nimport tailwindcss from '@tailwindcss/vite';\nimport { createBaseConfig } from './vendor/marko/vite/resources/config/createViteConfig';",
-                $this->viteStub(),
-            ),
+        return $this->renderer->renderViteConfig(
+            imports: $framework
+                ? [
+                    "import vue from '@vitejs/plugin-vue';",
+                    "import tailwindcss from '@tailwindcss/vite';",
+                ]
+                : ["import tailwindcss from '@tailwindcss/vite';"],
+            plugins: $framework ? ['vue()', 'tailwindcss()'] : ['tailwindcss()'],
+            entrypoints: $entrypoints ?? [
+                $this->viteConfig->rootEntrypointPath,
+                'resources/css/app.css',
+            ],
         );
     }
 
-    private function legacyViteStub(): string
+    protected function replaceableStubContents(): array
     {
-        return "export { default } from './modules/vite/resources/config/vite.config';\n";
-    }
-
-    private function vendorProxyViteStub(): string
-    {
-        return "export { default } from './vendor/marko/vite/resources/config/vite.config.ts';\n";
-    }
-
-    private function legacyTailwindProxyStub(): string
-    {
-        return "export { default } from './modules/tailwindcss/resources/config/vite.config';\n";
-    }
-
-    private function vendorTailwindProxyStub(): string
-    {
-        return "export { default } from './vendor/marko/tailwindcss/resources/config/vite.config.ts';\n";
+        return [
+            ...parent::replaceableStubContents(),
+            $this->tailwindStub(),
+        ];
     }
 }

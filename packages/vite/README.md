@@ -21,6 +21,19 @@ The init command prepares the minimum Vite setup for a Marko app:
 - publishes `vite.config.ts`
 - publishes `resources/js/app.ts`
 
+You can also use `vite:init` as the single frontend scaffold entrypoint for the common presets. If you run `marko vite:init` interactively with no preset flags, it will ask whether you want Inertia and Tailwind.
+
+```bash
+marko vite:init --tailwind
+marko vite:init --inertia=vue
+marko vite:init --inertia=react --tailwind
+marko vite:init --inertia=svelte --tailwind
+```
+
+When an Inertia preset is selected, the preset owns the generated `vite.config.ts` and `resources/js/app.ts`, so Tailwind can be layered on in the same command without conflicting with the framework-specific scaffold.
+
+If you pass `--inertia=...` or `--tailwind` and the corresponding Marko package is not installed yet, `vite:init` will install it with Composer first and then continue the scaffold.
+
 By default it configures these scripts:
 
 ```json

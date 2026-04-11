@@ -47,3 +47,11 @@ it('has module.php with bindings for the inertia vue services', function (): voi
         ->and($module['singletons'])->toContain(InertiaVuePublisher::class)
         ->and($module['singletons'])->toContain(InertiaVueViteConfigUpdater::class);
 });
+
+it('publishes a bootstrap helper with inertia config passthrough support', function (): void {
+    $bootstrap = (string) file_get_contents(dirname(__DIR__) . '/resources/js/bootstrap.ts');
+
+    expect($bootstrap)->toContain('inertia?:')
+        ->and($bootstrap)->toContain('typeof options.inertia === "function"')
+        ->and($bootstrap)->toContain('return createInertiaApp(inertiaConfig as never);');
+});
