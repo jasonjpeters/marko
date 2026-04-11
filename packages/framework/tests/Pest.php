@@ -37,4 +37,4 @@ declare(strict_types=1);
 |
 */
 
-require dirname(__DIR__, 3) . '/tests/Support/PackageInventory.php';
+require_once dirname(__DIR__, 3) . '/tests/Support/PackageInventory.php';

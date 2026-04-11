@@ -42,7 +42,6 @@ body:
         - authentication
         - authentication-token
         - authorization
-        - blog
         - cache
         - cache-array
         - cache-file
@@ -69,6 +68,11 @@ body:
         - health
         - http
         - http-guzzle
+        - inertia
+        - inertia-react
+        - inertia-svelte
+        - inertia-vue
+        - layout
         - log
         - log-file
         - mail
@@ -97,13 +101,15 @@ body:
         - session-file
         - skeleton
         - sse
+        - tailwindcss
         - testing
         - translation
         - translation-file
         - validation
         - view
         - view-latte
+        - vite
         - webhook
-        - Other
+        - other
     validations:
       required: true

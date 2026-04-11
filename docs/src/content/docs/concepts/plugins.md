@@ -29,7 +29,7 @@ declare(strict_types=1);
 
 namespace App\MyApp\Plugin;
 
-use Marko\Blog\Repositories\PostRepository;
+use App\Blog\Repository\PostRepository;
 use Marko\Core\Attributes\After;
 use Marko\Core\Attributes\Before;
 use Marko\Core\Attributes\Plugin;
@@ -115,7 +115,7 @@ For `after` plugins, the first parameter is the result from the original method,
 
 ### Sort Order
 
-Use the `sortOrder` parameter to control the order when multiple plugins target the same method:
+Use the `sortOrder` parameter to control the order when multiple plugins target the same method. The default is `0`, and negative values are supported:
 
 ```php
 #[Before(sortOrder: 10)]
