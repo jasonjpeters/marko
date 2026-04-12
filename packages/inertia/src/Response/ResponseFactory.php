@@ -32,6 +32,7 @@ class ResponseFactory
         private readonly EventDispatcherInterface $events,
         private readonly PropsResolver $propsResolver,
         private readonly ?Closure $sessionResolver = null,
+        private readonly ?Closure $pageMetadataResolver = null,
     ) {}
 
     /**
@@ -54,6 +55,7 @@ class ResponseFactory
             events: $this->events,
             propsResolver: $this->propsResolver,
             flash: new InertiaFlashStore($this->sessionResolver),
+            pageMetadataResolver: $this->pageMetadataResolver,
         );
     }
 

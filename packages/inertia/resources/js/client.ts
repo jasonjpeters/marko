@@ -2,13 +2,16 @@ type PageModule = unknown;
 type PageLoader = () => Promise<unknown>;
 export type MarkoInertiaPageEntry = PageLoader | PageModule;
 export type MarkoInertiaPages = Record<string, MarkoInertiaPageEntry>;
+export type MarkoParsedPageComponent = {
+  moduleName: string;
+  componentPath: string;
+};
 
 type ResolvedPage = {
   key: string;
   componentPath: string;
   isRoot: boolean;
-  moduleFullName: string | null;
-  moduleShortName: string | null;
+  moduleName: string | null;
 };
 
 export function createMarkoTitleResolver(
@@ -54,6 +57,12 @@ export function createMarkoPageResolver(
   return (component) => resolveMarkoPageComponent(component, pages);
 }
 
+export function parseMarkoPageComponent(
+  component: string,
+): MarkoParsedPageComponent {
+  return parseComponent(component);
+}
+
 function findMarkoPage(
   component: string,
   pages: MarkoInertiaPages,
@@ -87,8 +96,7 @@ function findMarkoPage(
   const modulePage = resolvedPages.find(
     (page) =>
       page.componentPath === parsedComponent.componentPath &&
-      (page.moduleShortName === parsedComponent.moduleName ||
-        page.moduleFullName === parsedComponent.moduleName),
+      page.moduleName === parsedComponent.moduleName,
   );
 
   return modulePage?.key ?? null;
@@ -121,13 +129,12 @@ function parseResolvedPage(key: string): ResolvedPage | null {
   if (normalized.startsWith("./pages/") || normalized.startsWith("./Pages/")) {
     const prefix = normalized.startsWith("./pages/") ? "./pages/" : "./Pages/";
 
-    return {
-      key,
-      componentPath: stripExtension(normalized.slice(prefix.length)),
-      isRoot: true,
-      moduleFullName: null,
-      moduleShortName: null,
-    };
+      return {
+        key,
+        componentPath: stripExtension(normalized.slice(prefix.length)),
+        isRoot: true,
+        moduleName: null,
+      };
   }
 
   const marker = ["/resources/js/pages/", "/resources/js/Pages/"].find(
@@ -152,8 +159,7 @@ function parseResolvedPage(key: string): ResolvedPage | null {
       key,
       componentPath,
       isRoot: false,
-      moduleFullName: `${vendorMatch[1]}/${vendorMatch[2]}`,
-      moduleShortName: vendorMatch[2],
+      moduleName: vendorMatch[2],
     };
   }
 
@@ -164,20 +170,18 @@ function parseResolvedPage(key: string): ResolvedPage | null {
       key,
       componentPath,
       isRoot: false,
-      moduleFullName: `app/${appMatch[1]}`,
-      moduleShortName: appMatch[1],
+      moduleName: appMatch[1],
     };
   }
 
-  const modulesMatch = moduleRoot.match(/\/modules\/([^/]+)$/);
+  const modulesMatch = moduleRoot.match(/\/modules\/(.+)$/);
 
   if (modulesMatch) {
     return {
       key,
       componentPath,
       isRoot: false,
-      moduleFullName: modulesMatch[1],
-      moduleShortName: modulesMatch[1],
+      moduleName: lastPathSegment(modulesMatch[1]),
     };
   }
 
@@ -185,8 +189,7 @@ function parseResolvedPage(key: string): ResolvedPage | null {
     key,
     componentPath,
     isRoot: false,
-    moduleFullName: null,
-    moduleShortName: null,
+    moduleName: null,
   };
 }
 
@@ -196,4 +199,11 @@ function stripExtension(path: string): string {
 
 function isRootAlias(moduleName: string): boolean {
   return moduleName === "app" || moduleName === "root";
+}
+
+function lastPathSegment(path: string): string {
+  const normalized = path.replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
+  const parts = normalized.split("/");
+
+  return parts[parts.length - 1] ?? normalized;
 }

@@ -8,7 +8,15 @@ Server-side Inertia integration for Marko applications, including page rendering
 composer require marko/inertia
 ```
 
-`marko/inertia` builds on top of Marko routing, sessions, and Vite.
+Pair it with one client adapter scaffold:
+
+```bash
+marko vite:init --inertia=vue
+marko vite:init --inertia=react
+marko vite:init --inertia=svelte
+```
+
+If the selected adapter package is not installed yet, `vite:init` installs it before generating the frontend files.
 
 ## Quick Example
 
@@ -36,15 +44,98 @@ class DashboardController
 }
 ```
 
-## Client Setup
+## How Marko Resolves Pages
 
-Pair this package with one of the companion client scaffolding packages:
+Marko's Inertia integration is built around Marko's module structure.
 
-- `marko/inertia-react`
-- `marko/inertia-vue`
-- `marko/inertia-svelte`
+Root pages use plain component names:
 
-Those packages publish a framework-specific `resources/js/app.ts` and update `vite.config.ts` to match the selected client runtime.
+```php
+$this->inertia->render('Dashboard/Index');
+```
+
+Module pages use `module::component` names:
+
+```php
+$this->inertia->render('blog::Posts/Index');
+```
+
+The generated client bootstrap typically discovers pages from:
+
+1. `resources/js/pages`
+2. `app/*/resources/js/pages`
+3. `modules/**/resources/js/pages`
+4. `vendor/marko/**/resources/js/pages`
+
+## Shared Props And Middleware
+
+`marko/inertia` includes middleware support for shared props and request handling. Extend the middleware when you want shared data on every page:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\MyApp\Http\Middleware;
+
+use Marko\Inertia\Middleware\HandleInertiaRequests;
+use Marko\Routing\Http\Request;
+
+class ShareInertiaData extends HandleInertiaRequests
+{
+    protected function share(Request $request): array
+    {
+        return [
+            'appName' => 'Marko',
+        ];
+    }
+}
+```
+
+## Controller-Driven Layouts
+
+If `marko/layout` is installed, controllers can provide layout metadata with `#[Layout(...)]`. Inertia passes that metadata to the client adapter, where Vue, React, or Svelte can map it to frontend layout components.
+
+Server-provided layout names follow Marko's module naming style:
+
+- root layout: `RootAdminLayout`
+- module layout: `blog::AdminLayout`
+
+The generated adapter bootstraps support:
+
+- page-local layouts
+- default layouts
+- resolved layouts by module/component path
+- discovered server layouts via `discoverMarkoServerLayouts(...)`
+
+For the client-side adapter setup, see:
+
+- [`marko/inertia-vue`](../inertia-vue/README.md)
+- [`marko/inertia-react`](../inertia-react/README.md)
+- [`marko/inertia-svelte`](../inertia-svelte/README.md)
+
+## Vite Integration
+
+`marko/inertia` is designed to work with `marko/vite`. The easiest setup path is:
+
+```bash
+composer require marko/inertia
+composer require marko/vite
+marko vite:init --inertia=vue
+```
+
+See [`marko/vite`](../vite/README.md) for:
+
+- scaffold flow
+- Vite aliases
+- discovery chain details
+- development and production asset handling
+
+## SSR
+
+`marko/inertia` includes optional SSR support through the configured SSR gateway and bundle settings in `inertia` config.
+
+Use SSR when you need server-rendered initial HTML for Inertia pages, but it is optional. The default client-side bootstrap works without SSR.
 
 ## Documentation
 

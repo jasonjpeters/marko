@@ -87,7 +87,7 @@ test('dev mode tag rendering', function (): void {
     file_put_contents($this->tempDirectory . '/public/hot', 'http://localhost:5173');
 
     $manager = makeViteManager(new ViteConfig(
-        devServerUrl: 'http://localhost:5173',
+        devServerUrl: 'http://127.0.0.1:65530',
         devProcessFilePath: $this->tempDirectory . '/.marko/dev.json',
         hotFilePath: $this->tempDirectory . '/public/hot',
         manifestPath: $this->tempDirectory . '/public/build/manifest.json',
@@ -113,7 +113,7 @@ test('production manifest tag rendering', function (): void {
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
     $manager = makeViteManager(new ViteConfig(
-        devServerUrl: 'http://localhost:5173',
+        devServerUrl: 'http://127.0.0.1:65530',
         devProcessFilePath: $this->tempDirectory . '/.marko/dev.json',
         hotFilePath: $this->tempDirectory . '/public/hot',
         manifestPath: $this->tempDirectory . '/public/build/manifest.json',
@@ -131,7 +131,7 @@ test('production manifest tag rendering', function (): void {
 
 test('missing manifest failure', function (): void {
     $manager = makeViteManager(new ViteConfig(
-        devServerUrl: 'http://localhost:5173',
+        devServerUrl: 'http://127.0.0.1:65530',
         devProcessFilePath: $this->tempDirectory . '/.marko/dev.json',
         hotFilePath: $this->tempDirectory . '/public/hot',
         manifestPath: $this->tempDirectory . '/public/build/manifest.json',
@@ -154,7 +154,7 @@ test('missing entrypoint failure', function (): void {
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
     $manager = makeViteManager(new ViteConfig(
-        devServerUrl: 'http://localhost:5173',
+        devServerUrl: 'http://127.0.0.1:65530',
         devProcessFilePath: $this->tempDirectory . '/.marko/dev.json',
         hotFilePath: $this->tempDirectory . '/public/hot',
         manifestPath: $this->tempDirectory . '/public/build/manifest.json',
@@ -189,7 +189,7 @@ test('css emitted from js entrypoint manifest data', function (): void {
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
     $manager = makeViteManager(new ViteConfig(
-        devServerUrl: 'http://localhost:5173',
+        devServerUrl: 'http://127.0.0.1:65530',
         devProcessFilePath: $this->tempDirectory . '/.marko/dev.json',
         hotFilePath: $this->tempDirectory . '/public/hot',
         manifestPath: $this->tempDirectory . '/public/build/manifest.json',
@@ -217,7 +217,7 @@ test('default root entrypoint is used when no entrypoint is provided', function 
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
     $manager = makeViteManager(new ViteConfig(
-        devServerUrl: 'http://localhost:5173',
+        devServerUrl: 'http://127.0.0.1:65530',
         devProcessFilePath: $this->tempDirectory . '/.marko/dev.json',
         hotFilePath: $this->tempDirectory . '/public/hot',
         manifestPath: $this->tempDirectory . '/public/build/manifest.json',
@@ -246,7 +246,7 @@ test('configured default entrypoints override the root entrypoint', function ():
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
     $manager = makeViteManager(new ViteConfig(
-        devServerUrl: 'http://localhost:5173',
+        devServerUrl: 'http://127.0.0.1:65530',
         devProcessFilePath: $this->tempDirectory . '/.marko/dev.json',
         hotFilePath: $this->tempDirectory . '/public/hot',
         manifestPath: $this->tempDirectory . '/public/build/manifest.json',
@@ -284,7 +284,7 @@ test('stale frontend process metadata does not force development mode', function
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
     $manager = makeViteManager(new ViteConfig(
-        devServerUrl: 'http://localhost:5173',
+        devServerUrl: 'http://127.0.0.1:65530',
         devProcessFilePath: $this->tempDirectory . '/.marko/dev.json',
         hotFilePath: $this->tempDirectory . '/public/hot',
         manifestPath: $this->tempDirectory . '/public/build/manifest.json',
@@ -299,4 +299,35 @@ test('stale frontend process metadata does not force development mode', function
 
     expect($html)->toContain('<script type="module" src="/build/assets/app.123.js"></script>');
     expect($html)->not->toContain('http://localhost:5173/@vite/client');
+})->group('vite');
+
+test('reachable configured dev server enables development mode without marker files', function (): void {
+    $server = stream_socket_server('tcp://127.0.0.1:0');
+
+    expect($server)->not->toBeFalse();
+
+    $address = stream_socket_get_name($server, false);
+
+    expect($address)->toBeString();
+
+    $port = (int) substr((string) $address, strrpos((string) $address, ':') + 1);
+
+    $manager = makeViteManager(new ViteConfig(
+        devServerUrl: "http://127.0.0.1:$port",
+        devProcessFilePath: $this->tempDirectory . '/.marko/dev.json',
+        hotFilePath: $this->tempDirectory . '/public/hot',
+        manifestPath: $this->tempDirectory . '/public/build/manifest.json',
+        buildDirectory: '/build',
+        assetsBaseUrl: '',
+        defaultEntrypoints: [],
+        rootEntrypointPath: 'resources/js/app.ts',
+        rootViteConfigPath: 'vite.config.ts',
+    ));
+
+    $html = $manager->tags('resources/js/app.js');
+
+    fclose($server);
+
+    expect($html)->toContain("<script type=\"module\" src=\"http://127.0.0.1:$port/@vite/client\"></script>")
+        ->and($html)->toContain("<script type=\"module\" src=\"http://127.0.0.1:$port/resources/js/app.js\"></script>");
 })->group('vite');

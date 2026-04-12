@@ -13,6 +13,7 @@ use Marko\Inertia\Interfaces\RootRendererInterface;
 use Marko\Inertia\Props\PropsResolver;
 use Marko\Routing\Http\Request;
 use Marko\Routing\Http\Response as HttpResponse;
+use Closure;
 
 class Response
 {
@@ -29,6 +30,7 @@ class Response
         private readonly EventDispatcherInterface $events,
         private readonly PropsResolver $propsResolver,
         private readonly InertiaFlashStore $flash,
+        private readonly ?Closure $pageMetadataResolver = null,
     ) {}
 
     public function toResponse(
@@ -62,7 +64,13 @@ class Response
             'version' => $version,
         ];
 
-        $page = array_replace($page, $resolved->metadata);
+        $page = $this->mergePageMetadata($page, $resolved->metadata);
+        $page = $this->mergePageMetadata(
+            $page,
+            $this->pageMetadataResolver instanceof Closure
+                ? (array) ($this->pageMetadataResolver)($request, $this->component, $page['props'])
+                : [],
+        );
 
         $flash = $this->flash->pull();
         if ($flash !== []) {
@@ -86,6 +94,27 @@ class Response
         }
 
         return HttpResponse::html($this->rootRenderer->render($page), 200);
+    }
+
+    /**
+     * @param array<string, mixed> $page
+     * @param array<string, mixed> $metadata
+     * @return array<string, mixed>
+     */
+    private function mergePageMetadata(
+        array $page,
+        array $metadata,
+    ): array {
+        foreach ($metadata as $key => $value) {
+            if ($key === 'props' && is_array($value)) {
+                $page['props'] = array_replace_recursive($page['props'], $value);
+                continue;
+            }
+
+            $page[$key] = $value;
+        }
+
+        return $page;
     }
 
     private function location(

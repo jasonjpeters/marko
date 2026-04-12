@@ -27,21 +27,19 @@ class ManifestRepository implements ManifestRepositoryInterface
             return $this->manifest;
         }
 
-        if (!is_file($this->config->manifestPath)) {
-            throw ManifestNotFoundException::forPath($this->config->manifestPath);
-        }
+        $manifestPath = $this->resolveManifestPath();
 
-        $contents = file_get_contents($this->config->manifestPath);
+        $contents = file_get_contents($manifestPath);
 
         if ($contents === false) {
-            throw ManifestNotFoundException::forPath($this->config->manifestPath);
+            throw ManifestNotFoundException::forPath($manifestPath);
         }
 
         $decoded = json_decode($contents, true);
 
         if (!is_array($decoded)) {
             throw ManifestNotFoundException::invalidJson(
-                $this->config->manifestPath,
+                $manifestPath,
                 json_last_error_msg(),
             );
         }
@@ -63,7 +61,7 @@ class ManifestRepository implements ManifestRepositoryInterface
             );
         }
 
-        $this->manifest = new Manifest($this->config->manifestPath, $entries);
+        $this->manifest = new Manifest($manifestPath, $entries);
         $this->events->dispatch(new ManifestLoaded($this->manifest));
 
         return $this->manifest;
@@ -72,5 +70,20 @@ class ManifestRepository implements ManifestRepositoryInterface
     public function entry(string $entrypoint): ManifestEntry
     {
         return $this->manifest()->entry($entrypoint);
+    }
+
+    private function resolveManifestPath(): string
+    {
+        if (is_file($this->config->manifestPath)) {
+            return $this->config->manifestPath;
+        }
+
+        $legacyPath = preg_replace('#/manifest\.json$#', '/.vite/manifest.json', $this->config->manifestPath);
+
+        if (is_string($legacyPath) && $legacyPath !== '' && is_file($legacyPath)) {
+            return $legacyPath;
+        }
+
+        throw ManifestNotFoundException::forPath($this->config->manifestPath);
     }
 }

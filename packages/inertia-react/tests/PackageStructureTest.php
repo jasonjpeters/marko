@@ -48,10 +48,18 @@ it('has module.php with bindings for the inertia react services', function (): v
         ->and($module['singletons'])->toContain(InertiaReactViteConfigUpdater::class);
 });
 
-it('publishes a bootstrap helper with inertia config passthrough support', function (): void {
+it('publishes a bootstrap helper with layout resolution and inertia config passthrough support', function (): void {
     $bootstrap = (string) file_get_contents(dirname(__DIR__) . '/resources/js/bootstrap.ts');
 
-    expect($bootstrap)->toContain('inertia?:')
+    expect($bootstrap)->toContain('defaultLayout?:')
+        ->and($bootstrap)->toContain('export function discoverMarkoServerLayouts(')
+        ->and($bootstrap)->toContain('resolveLayout?:')
+        ->and($bootstrap)->toContain('serverLayouts?:')
+        ->and($bootstrap)->toContain('resolveServerLayout?:')
+        ->and($bootstrap)->toContain('layout: (component, page) => {')
+        ->and($bootstrap)->toContain('page.props?._marko?.layout')
+        ->and($bootstrap)->toContain('options.resolveLayout?.({')
+        ->and($bootstrap)->toContain('inertia?:')
         ->and($bootstrap)->toContain('typeof options.inertia === "function"')
         ->and($bootstrap)->toContain('return createInertiaApp(inertiaConfig as never);');
 });

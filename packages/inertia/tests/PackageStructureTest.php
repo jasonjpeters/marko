@@ -49,3 +49,11 @@ it('has module.php with bindings for the inertia services', function (): void {
         ->and($module['singletons'])->not->toContain(ResponseFactory::class)
         ->and($module['singletons'])->not->toContain(\Marko\Inertia\Inertia::class);
 });
+
+it('publishes shared client helpers for resolving and parsing page component names', function (): void {
+    $client = (string) file_get_contents(dirname(__DIR__) . '/resources/js/client.ts');
+
+    expect($client)->toContain('export async function resolveMarkoPageComponent(')
+        ->and($client)->toContain('export function parseMarkoPageComponent(')
+        ->and($client)->toContain('export type MarkoParsedPageComponent =');
+});

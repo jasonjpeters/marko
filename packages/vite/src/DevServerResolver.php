@@ -11,13 +11,17 @@ use Marko\Vite\ValueObjects\ViteConfig;
 
 class DevServerResolver implements DevServerResolverInterface
 {
+    private ?bool $reachable = null;
+
     public function __construct(
         private readonly ViteConfig $config,
     ) {}
 
     public function isDevelopment(): bool
     {
-        return $this->hasRunningFrontendProcess() || is_file($this->config->hotFilePath);
+        return $this->hasRunningFrontendProcess()
+            || is_file($this->config->hotFilePath)
+            || $this->hasReachableConfiguredDevServer();
     }
 
     public function resolve(): DevServer
@@ -75,6 +79,55 @@ class DevServerResolver implements DevServerResolverInterface
         }
 
         return false;
+    }
+
+    private function hasReachableConfiguredDevServer(): bool
+    {
+        if ($this->reachable !== null) {
+            return $this->reachable;
+        }
+
+        $parts = parse_url($this->config->devServerUrl);
+
+        if (!is_array($parts)) {
+            return $this->reachable = false;
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = (string) ($parts['host'] ?? '');
+        $port = isset($parts['port']) ? (int) $parts['port'] : match ($scheme) {
+            'https', 'wss' => 443,
+            'http', 'ws' => 80,
+            default => 0,
+        };
+
+        if ($host === '' || $port <= 0) {
+            return $this->reachable = false;
+        }
+
+        $transport = in_array($scheme, ['https', 'wss'], true) ? 'tls' : 'tcp';
+        $errorCode = 0;
+        $errorMessage = '';
+        set_error_handler(static fn (): bool => true);
+
+        try {
+            $connection = stream_socket_client(
+                sprintf('%s://%s:%d', $transport, $host, $port),
+                $errorCode,
+                $errorMessage,
+                0.2,
+            );
+        } finally {
+            restore_error_handler();
+        }
+
+        if (is_resource($connection)) {
+            fclose($connection);
+
+            return $this->reachable = true;
+        }
+
+        return $this->reachable = false;
     }
 
     /**

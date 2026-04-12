@@ -116,29 +116,45 @@ readonly class ModuleComponentResolver implements ComponentResolverInterface
         $roots = [];
 
         foreach ($this->moduleRepository->all() as $module) {
-            if ($this->matchesModuleName($module->name, $moduleName)) {
-                $roots[] = $module->path;
+            if ($this->moduleAliasName($module->name) === $moduleName) {
+                $roots[] = [
+                    'path' => $module->path,
+                    'priority' => $this->sourcePriority($module->source),
+                ];
             }
         }
 
         if (in_array($moduleName, ['app', 'root'], true)) {
-            array_unshift($roots, $this->projectPaths->base);
+            array_unshift($roots, [
+                'path' => $this->projectPaths->base,
+                'priority' => 300,
+            ]);
         }
 
-        return array_values(array_unique($roots));
+        usort(
+            $roots,
+            static fn (array $left, array $right): int => $right['priority'] <=> $left['priority'],
+        );
+
+        return array_values(array_unique(array_column($roots, 'path')));
     }
 
-    private function matchesModuleName(
-        string $fullName,
-        string $shortName,
-    ): bool {
-        if ($fullName === $shortName) {
-            return true;
-        }
+    private function moduleAliasName(
+        string $moduleName,
+    ): string {
+        $parts = explode('/', $moduleName);
 
-        $parts = explode('/', $fullName);
+        return end($parts) ?: $moduleName;
+    }
 
-        return end($parts) === $shortName;
+    private function sourcePriority(
+        string $source,
+    ): int {
+        return match ($source) {
+            'app' => 200,
+            'modules' => 100,
+            default => 0,
+        };
     }
 
     private function buildComponentPath(

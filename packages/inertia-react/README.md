@@ -1,35 +1,37 @@
 # marko/inertia-react
 
-React client scaffolding for Marko Inertia applications.
+React adapter scaffolding for Marko Inertia applications.
 
 ## Installation
 
-```bash
-composer require marko/inertia-react
-```
-
-## Initialize Project Files
+The recommended setup path is:
 
 ```bash
 marko vite:init --inertia=react
 ```
 
-The Vite init flow adds the minimum React + Inertia client setup for a Marko project:
+If `marko/inertia-react` is not installed yet, `vite:init` installs it before generating the frontend scaffold.
 
-- updates `package.json`
-- publishes a React-aware `vite.config.ts`
-- publishes `resources/js/app.ts`
+If you prefer to install it manually first:
 
-## Customizing `createInertiaApp`
+```bash
+composer require marko/inertia-react
+marko vite:init --inertia=react
+```
 
-The scaffold keeps `resources/js/app.ts` small and delegates the default
-`createInertiaApp()` setup to `bootstrapMarkoInertiaReact()`.
+## What The Scaffold Generates
 
-Use the `setup` option when you only need to wrap the app or register client
-behavior:
+The React scaffold updates:
+
+- `package.json`
+- `vite.config.ts`
+- `resources/js/app.ts`
+
+The generated `resources/js/app.ts` stays intentionally small and delegates the default setup to `bootstrapMarkoInertiaReact()`.
+
+## Basic Usage
 
 ```tsx
-import { createElement, StrictMode } from "react";
 import { bootstrapMarkoInertiaReact } from "../../vendor/marko/inertia-react/resources/js/bootstrap";
 
 const pages = import.meta.glob([
@@ -45,28 +47,26 @@ const pages = import.meta.glob([
 
 bootstrapMarkoInertiaReact({
   pages,
+});
+```
+
+## React Customization
+
+Use `setup` when you want to control how the app is rendered:
+
+```tsx
+import { createElement, StrictMode } from "react";
+import { bootstrapMarkoInertiaReact } from "../../vendor/marko/inertia-react/resources/js/bootstrap";
+
+bootstrapMarkoInertiaReact({
+  pages,
   setup: ({ root, app }) => {
     root.render(createElement(StrictMode, null, app));
   },
 });
 ```
 
-Use the `inertia` option when you want to add or override
-`createInertiaApp()` config while keeping Marko's default resolver helpers:
-
-```tsx
-bootstrapMarkoInertiaReact({
-  pages,
-  inertia: (config) => ({
-    ...config,
-    progress: {
-      color: "#2563eb",
-    },
-  }),
-});
-```
-
-You can also pass a partial object instead of a callback:
+Use `inertia` when you want to customize `createInertiaApp()` options while keeping Marko's default page resolution:
 
 ```tsx
 bootstrapMarkoInertiaReact({
@@ -78,3 +78,54 @@ bootstrapMarkoInertiaReact({
   },
 });
 ```
+
+## Layouts
+
+Use `defaultLayout` or `resolveLayout` for client-side layout behavior:
+
+```tsx
+import AppLayout from "@/layouts/AppLayout";
+import AdminLayout from "@admin-panel/layouts/AdminLayout";
+
+bootstrapMarkoInertiaReact({
+  pages,
+  defaultLayout: AppLayout,
+  resolveLayout: ({ moduleName, componentPath }) => {
+    if (moduleName === "admin-panel" || componentPath.startsWith("Admin/")) {
+      return AdminLayout;
+    }
+
+    return AppLayout;
+  },
+});
+```
+
+If `marko/layout` is installed and a controller provides `#[Layout(...)]`, discover matching React layouts with `discoverMarkoServerLayouts()`:
+
+```tsx
+import {
+  bootstrapMarkoInertiaReact,
+  discoverMarkoServerLayouts,
+} from "../../vendor/marko/inertia-react/resources/js/bootstrap";
+
+bootstrapMarkoInertiaReact({
+  pages,
+  serverLayouts: {
+    ...discoverMarkoServerLayouts(import.meta.glob([
+      "./layouts/**/*.jsx",
+      "./layouts/**/*.tsx",
+      "../../app/**/resources/js/layouts/**/*.jsx",
+      "../../app/**/resources/js/layouts/**/*.tsx",
+      "../../modules/**/resources/js/layouts/**/*.jsx",
+      "../../modules/**/resources/js/layouts/**/*.tsx",
+      "../../vendor/marko/**/resources/js/layouts/**/*.jsx",
+      "../../vendor/marko/**/resources/js/layouts/**/*.tsx",
+    ], { eager: true })),
+  },
+});
+```
+
+## Related Marko Docs
+
+- [`marko/vite`](../vite/README.md) for scaffold flow, aliases, and discovery-chain rules
+- [`marko/inertia`](../inertia/README.md) for server-side rendering, page names, shared props, and controller-driven layouts

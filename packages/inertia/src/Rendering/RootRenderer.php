@@ -47,13 +47,16 @@ class RootRenderer implements RootRendererInterface
     private function renderClientRoot(array $page): string
     {
         $rootId = htmlspecialchars($this->config->rootElementId(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $pageJson = htmlspecialchars(
+        $pageJson = str_replace(
+            '</script>',
+            '<\/script>',
             json_encode($page, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            'UTF-8',
         );
 
-        return "<div id=\"$rootId\" data-page='$pageJson'></div>";
+        return implode('', [
+            "<script data-page=\"$rootId\" type=\"application/json\">$pageJson</script>",
+            "<div id=\"$rootId\"></div>",
+        ]);
     }
 
     /**

@@ -1,34 +1,37 @@
 # marko/inertia-svelte
 
-Svelte client scaffolding for Marko Inertia applications.
+Svelte adapter scaffolding for Marko Inertia applications.
 
 ## Installation
 
-```bash
-composer require marko/inertia-svelte
-```
-
-## Initialize Project Files
+The recommended setup path is:
 
 ```bash
 marko vite:init --inertia=svelte
 ```
 
-The Vite init flow adds the minimum Svelte + Inertia client setup for a Marko project:
+If `marko/inertia-svelte` is not installed yet, `vite:init` installs it before generating the frontend scaffold.
 
-- updates `package.json`
-- publishes a Svelte-aware `vite.config.ts`
-- publishes `resources/js/app.ts`
+If you prefer to install it manually first:
 
-## Customizing `createInertiaApp`
+```bash
+composer require marko/inertia-svelte
+marko vite:init --inertia=svelte
+```
 
-The scaffold keeps `resources/js/app.ts` small and delegates the default
-`createInertiaApp()` setup to `bootstrapMarkoInertiaSvelte()`.
+## What The Scaffold Generates
 
-Use the `setup` option when you only need to control how the root app mounts:
+The Svelte scaffold updates:
+
+- `package.json`
+- `vite.config.ts`
+- `resources/js/app.ts`
+
+The generated `resources/js/app.ts` stays intentionally small and delegates the default setup to `bootstrapMarkoInertiaSvelte()`.
+
+## Basic Usage
 
 ```ts
-import { mount } from "svelte";
 import { bootstrapMarkoInertiaSvelte } from "../../vendor/marko/inertia-svelte/resources/js/bootstrap";
 
 const pages = import.meta.glob([
@@ -37,6 +40,19 @@ const pages = import.meta.glob([
   "../../modules/**/resources/js/pages/**/*.svelte",
   "../../vendor/marko/**/resources/js/pages/**/*.svelte",
 ]);
+
+bootstrapMarkoInertiaSvelte({
+  pages,
+});
+```
+
+## Svelte Customization
+
+Use `setup` when you want to control how the app mounts:
+
+```ts
+import { mount } from "svelte";
+import { bootstrapMarkoInertiaSvelte } from "../../vendor/marko/inertia-svelte/resources/js/bootstrap";
 
 bootstrapMarkoInertiaSvelte({
   pages,
@@ -49,22 +65,7 @@ bootstrapMarkoInertiaSvelte({
 });
 ```
 
-Use the `inertia` option when you want to add or override
-`createInertiaApp()` config while keeping Marko's default resolver helpers:
-
-```ts
-bootstrapMarkoInertiaSvelte({
-  pages,
-  inertia: (config) => ({
-    ...config,
-    progress: {
-      color: "#ea580c",
-    },
-  }),
-});
-```
-
-You can also pass a partial object instead of a callback:
+Use `inertia` when you want to customize `createInertiaApp()` options while keeping Marko's default page resolution:
 
 ```ts
 bootstrapMarkoInertiaSvelte({
@@ -76,3 +77,50 @@ bootstrapMarkoInertiaSvelte({
   },
 });
 ```
+
+## Layouts
+
+Use `defaultLayout` or `resolveLayout` for client-side layout behavior:
+
+```ts
+import AppLayout from "@/layouts/AppLayout.svelte";
+import AdminLayout from "@admin-panel/layouts/AdminLayout.svelte";
+
+bootstrapMarkoInertiaSvelte({
+  pages,
+  defaultLayout: AppLayout,
+  resolveLayout: ({ moduleName, componentPath }) => {
+    if (moduleName === "admin-panel" || componentPath.startsWith("Admin/")) {
+      return AdminLayout;
+    }
+
+    return AppLayout;
+  },
+});
+```
+
+If `marko/layout` is installed and a controller provides `#[Layout(...)]`, discover matching Svelte layouts with `discoverMarkoServerLayouts()`:
+
+```ts
+import {
+  bootstrapMarkoInertiaSvelte,
+  discoverMarkoServerLayouts,
+} from "../../vendor/marko/inertia-svelte/resources/js/bootstrap";
+
+bootstrapMarkoInertiaSvelte({
+  pages,
+  serverLayouts: {
+    ...discoverMarkoServerLayouts(import.meta.glob([
+      "./layouts/**/*.svelte",
+      "../../app/**/resources/js/layouts/**/*.svelte",
+      "../../modules/**/resources/js/layouts/**/*.svelte",
+      "../../vendor/marko/**/resources/js/layouts/**/*.svelte",
+    ], { eager: true })),
+  },
+});
+```
+
+## Related Marko Docs
+
+- [`marko/vite`](../vite/README.md) for scaffold flow, aliases, and discovery-chain rules
+- [`marko/inertia`](../inertia/README.md) for server-side rendering, page names, shared props, and controller-driven layouts

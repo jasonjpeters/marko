@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 use Marko\Config\ConfigRepository;
+use Marko\Core\Module\ModuleRepository;
 use Marko\Core\Event\Event;
 use Marko\Core\Event\EventDispatcherInterface;
+use Marko\Core\Path\ProjectPaths;
+use Marko\Inertia\ControllerLayoutPageMetadataResolver;
 use Marko\Inertia\Enums\InertiaHeaderEnum;
 use Marko\Inertia\Events\InertiaRenderingEvent;
 use Marko\Inertia\Inertia;
@@ -44,7 +47,11 @@ function fakeInertiaConfig(array $overrides = []): InertiaConfig
     ]));
 }
 
-function makeInertia(?callable $listener = null, array $configOverrides = []): Inertia
+function makeInertia(
+    ?callable $listener = null,
+    array $configOverrides = [],
+    ?callable $pageMetadataResolver = null,
+): Inertia
 {
     $components = new class () implements ComponentResolverInterface
     {
@@ -165,7 +172,16 @@ function makeInertia(?callable $listener = null, array $configOverrides = []): I
         $events,
         new PropsResolver(),
         static fn () => $session,
+        $pageMetadataResolver,
     ));
+}
+
+class InertiaLayoutComponent {}
+
+#[\Marko\Layout\Attributes\Layout(InertiaLayoutComponent::class)]
+class InertiaLayoutController
+{
+    public function index(): void {}
 }
 
 it('renders an html bootstrap response for first visits', function (): void {
@@ -224,6 +240,49 @@ it('allows observers to contribute shared props during rendering', function (): 
 
     expect($payload['props'])->toHaveKey('ziggy')
         ->and($payload['props']['ziggy']['location'])->toBe('/dashboard');
+});
+
+it('merges page metadata resolver props without overwriting existing page props', function (): void {
+    $inertia = makeInertia(
+        pageMetadataResolver: static fn (mixed ...$args): array => [
+            'props' => [
+                '_marko' => [
+                    'layout' => [
+                        'name' => 'admin-panel::AdminLayout',
+                    ],
+                ],
+            ],
+        ],
+    );
+
+    $request = new Request(
+        server: [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/dashboard',
+            'HTTP_X_INERTIA' => 'true',
+        ],
+    );
+
+    $response = $inertia->render('Dashboard/Index', ['stats' => [1, 2, 3]], $request);
+    $payload = json_decode($response->body(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['props']['stats'])->toBe([1, 2, 3])
+        ->and($payload['props']['_marko']['layout']['name'])->toBe('admin-panel::AdminLayout');
+});
+
+it('resolves controller layout metadata for inertia pages when marko layout is available', function (): void {
+    $resolver = new ControllerLayoutPageMetadataResolver(
+        new ModuleRepository([]),
+        new ProjectPaths(sys_get_temp_dir()),
+    );
+
+    $metadata = $resolver->resolve(
+        InertiaLayoutController::class,
+        'index',
+    );
+
+    expect($metadata['props']['_marko']['layout']['component'])->toBe(InertiaLayoutComponent::class)
+        ->and($metadata['props']['_marko']['layout']['name'])->toBe('InertiaLayoutComponent');
 });
 
 it('supports partial reload headers for matching components', function (): void {

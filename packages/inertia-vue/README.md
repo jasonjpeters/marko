@@ -1,32 +1,35 @@
 # marko/inertia-vue
 
-Vue client scaffolding for Marko Inertia applications.
+Vue adapter scaffolding for Marko Inertia applications.
 
 ## Installation
 
-```bash
-composer require marko/inertia-vue
-```
-
-## Initialize Project Files
+The recommended setup path is:
 
 ```bash
 marko vite:init --inertia=vue
 ```
 
-The Vite init flow adds the minimum Vue + Inertia client setup for a Marko project:
+If `marko/inertia-vue` is not installed yet, `vite:init` installs it before generating the frontend scaffold.
 
-- updates `package.json`
-- publishes a Vue-aware `vite.config.ts`
-- publishes `resources/js/app.ts`
+If you prefer to install it manually first:
 
-## Customizing `createInertiaApp`
+```bash
+composer require marko/inertia-vue
+marko vite:init --inertia=vue
+```
 
-The scaffold keeps `resources/js/app.ts` small and delegates the default
-`createInertiaApp()` setup to `bootstrapMarkoInertiaVue()`.
+## What The Scaffold Generates
 
-Use the `setup` option when you only need to register Vue plugins, globals, or
-components:
+The Vue scaffold updates:
+
+- `package.json`
+- `vite.config.ts`
+- `resources/js/app.ts`
+
+The generated `resources/js/app.ts` stays intentionally small and delegates the default setup to `bootstrapMarkoInertiaVue()`.
+
+## Basic Usage
 
 ```ts
 import { bootstrapMarkoInertiaVue } from "../../vendor/marko/inertia-vue/resources/js/bootstrap";
@@ -40,7 +43,18 @@ const pages = import.meta.glob([
 
 bootstrapMarkoInertiaVue({
   pages,
-  title: (title, appName) => (title ? `${title} | ${appName}` : appName),
+});
+```
+
+## Vue Customization
+
+Use `setup` when you want to register plugins, globals, or other Vue app behavior:
+
+```ts
+import { bootstrapMarkoInertiaVue } from "../../vendor/marko/inertia-vue/resources/js/bootstrap";
+
+bootstrapMarkoInertiaVue({
+  pages,
   setup: ({ app, el }) => {
     app.config.globalProperties.$appName = "Marko";
     app.mount(el);
@@ -48,22 +62,7 @@ bootstrapMarkoInertiaVue({
 });
 ```
 
-Use the `inertia` option when you want to add or override
-`createInertiaApp()` config while keeping Marko's default resolver helpers:
-
-```ts
-bootstrapMarkoInertiaVue({
-  pages,
-  inertia: (config) => ({
-    ...config,
-    progress: {
-      color: "#0f766e",
-    },
-  }),
-});
-```
-
-You can also pass a partial object instead of a callback:
+Use `inertia` when you want to customize `createInertiaApp()` options while keeping Marko's default page resolution:
 
 ```ts
 bootstrapMarkoInertiaVue({
@@ -75,3 +74,50 @@ bootstrapMarkoInertiaVue({
   },
 });
 ```
+
+## Layouts
+
+Use `defaultLayout` or `resolveLayout` for client-side layout behavior:
+
+```ts
+import AppLayout from "@/layouts/AppLayout.vue";
+import AdminLayout from "@admin-panel/layouts/AdminLayout.vue";
+
+bootstrapMarkoInertiaVue({
+  pages,
+  defaultLayout: AppLayout,
+  resolveLayout: ({ moduleName, componentPath }) => {
+    if (moduleName === "admin-panel" || componentPath.startsWith("Admin/")) {
+      return AdminLayout;
+    }
+
+    return AppLayout;
+  },
+});
+```
+
+If `marko/layout` is installed and a controller provides `#[Layout(...)]`, discover matching Vue layouts with `discoverMarkoServerLayouts()`:
+
+```ts
+import {
+  bootstrapMarkoInertiaVue,
+  discoverMarkoServerLayouts,
+} from "../../vendor/marko/inertia-vue/resources/js/bootstrap";
+
+bootstrapMarkoInertiaVue({
+  pages,
+  serverLayouts: {
+    ...discoverMarkoServerLayouts(import.meta.glob([
+      "./layouts/**/*.vue",
+      "../../app/**/resources/js/layouts/**/*.vue",
+      "../../modules/**/resources/js/layouts/**/*.vue",
+      "../../vendor/marko/**/resources/js/layouts/**/*.vue",
+    ], { eager: true })),
+  },
+});
+```
+
+## Related Marko Docs
+
+- [`marko/vite`](../vite/README.md) for scaffold flow, aliases, and discovery-chain rules
+- [`marko/inertia`](../inertia/README.md) for server-side rendering, page names, shared props, and controller-driven layouts

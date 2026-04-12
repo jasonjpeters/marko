@@ -33,3 +33,17 @@ it('has module.php with bindings for the vite services', function (): void {
         ->and($module['bindings'])->toHaveKey(Marko\Vite\Contracts\ViteManagerInterface::class)
         ->and($module['bindings'])->toHaveKey(Marko\Vite\Contracts\VitePublisherInterface::class);
 });
+
+it('publishes a base vite config helper with root and module alias support', function (): void {
+    $helper = (string) file_get_contents(dirname(__DIR__) . '/resources/config/createViteConfig.ts');
+
+    expect($helper)->toContain('resolve: {')
+        ->and($helper)->toContain('alias: createMarkoAliases(projectRoot)')
+        ->and($helper)->toContain('watch: {')
+        ->and($helper)->toContain('ignored: createIgnoredWatchPatterns()')
+        ->and($helper)->toContain('"**/storage/**"')
+        ->and($helper)->toContain("find: /^@\\//")
+        ->and($helper)->toContain('discoverModuleAliases(projectRoot)')
+        ->and($helper)->toContain('registerModulesDirectoryAliases')
+        ->and($helper)->toContain('registerAppDirectoryAliases');
+});

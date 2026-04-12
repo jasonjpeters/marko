@@ -81,7 +81,8 @@ it('renders the client bootstrap root when ssr does not provide markup', functio
         'version' => null,
     ]);
 
-    expect($html)->toContain('<div id="app" data-page=')
+    expect($html)->toContain('<script data-page="app" type="application/json">')
+        ->and($html)->toContain('<div id="app"></div>')
         ->and($html)->toContain('<script src="/build/app.js"></script>');
 });
 
