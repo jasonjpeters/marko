@@ -101,6 +101,14 @@ Server-provided layout names follow Marko's module naming style:
 - root layout: `RootAdminLayout`
 - module layout: `blog::AdminLayout`
 
+For Inertia-only routes, `#[Layout(...)]` can point directly at one of those discovered names instead of a PHP layout component class:
+
+```php
+#[Layout(component: 'blog::AdminLayout')]
+```
+
+That keeps the setup to the frontend layout component plus the controller attribute. If you also need Marko's server-rendered `marko/layout` pipeline, keep using a real PHP component class with `#[Component(...)]`.
+
 The generated adapter bootstraps support:
 
 - page-local layouts

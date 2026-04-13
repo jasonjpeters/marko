@@ -101,6 +101,12 @@ bootstrapMarkoInertiaSvelte({
 
 If `marko/layout` is installed and a controller provides `#[Layout(...)]`, discover matching Svelte layouts with `discoverMarkoServerLayouts()`:
 
+```php
+#[Layout(component: 'blog::AdminLayout')]
+```
+
+For Inertia-only routes, the layout can be this discovered name directly, so you only need the controller attribute and the Svelte layout component file.
+
 ```ts
 import {
   bootstrapMarkoInertiaSvelte,

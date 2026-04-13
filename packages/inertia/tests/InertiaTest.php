@@ -184,6 +184,12 @@ class InertiaLayoutController
     public function index(): void {}
 }
 
+#[\Marko\Layout\Attributes\Layout('showcase::ShowcaseDemoLayout')]
+class InertiaNamedLayoutController
+{
+    public function index(): void {}
+}
+
 it('renders an html bootstrap response for first visits', function (): void {
     $inertia = makeInertia();
     $request = new Request(
@@ -283,6 +289,22 @@ it('resolves controller layout metadata for inertia pages when marko layout is a
 
     expect($metadata['props']['_marko']['layout']['component'])->toBe(InertiaLayoutComponent::class)
         ->and($metadata['props']['_marko']['layout']['name'])->toBe('InertiaLayoutComponent');
+});
+
+it('passes through string layout identifiers for inertia-only routes', function (): void {
+    $resolver = new ControllerLayoutPageMetadataResolver(
+        new ModuleRepository([]),
+        new ProjectPaths(sys_get_temp_dir()),
+    );
+
+    $metadata = $resolver->resolve(
+        InertiaNamedLayoutController::class,
+        'index',
+    );
+
+    expect($metadata['props']['_marko']['layout'])->toBe([
+        'component' => 'showcase::ShowcaseDemoLayout',
+    ]);
 });
 
 it('supports partial reload headers for matching components', function (): void {
